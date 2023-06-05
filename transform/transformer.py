@@ -17,7 +17,7 @@ class Transformer:
     @staticmethod
     def __drop_columns(df):
         columns_to_keep = ['title', 'type', 'area', 'num_rooms', 'posted_by', 'age', 'condition',
-       'equipment', 'heating', 'floor', 'total_floors', 'utilities_cost',
+       'equipment', 'heating', 'floor', 'total_floors', 'utilities_cost', 'utilities_currency',
        'payment_period', 'rent_cost', 'rent_currency', 'city', 'location',
        'micro_location', 'street', 'date_posted', 'deposit', 'not_in_house',
        'pet_friendly', 'immediately_available', 'balcony', 'air_conditioning',
@@ -33,8 +33,8 @@ class Transformer:
         return df
 
     @staticmethod
-    def __read_raw_file(input_file):
-        df_raw = pd.read_csv('raw_output.csv', decimal=',')
+    def __read_raw_file(input_file='raw_output.csv'):
+        df_raw = pd.read_csv(input_file, decimal=',')
         return df_raw
 
     @staticmethod
@@ -42,6 +42,7 @@ class Transformer:
         df = Transformer.__parse_area(df)
         df = Transformer.__parse_rent_cost(df)
         df = Transformer.__parse_floor(df)
+        df = Transformer.__parse_utilities(df)
         df["num_rooms"] = df["num_rooms"].astype(float)
         return df
 
@@ -50,7 +51,10 @@ class Transformer:
         df['smoking_forbidden'] = (~df['allowed_smoking']) & df['no_smoking']
         return df
 
-
+    @staticmethod
+    def __parse_utilities(df):
+        df[["utilities_cost", "utilities_currency"]] = df["utilities_cost"].str.split(" ", expand=True)
+        df["utilities_cost"] = df["utilities_cost"].astype(float)        
 
     @staticmethod
     def __parse_area(df):
