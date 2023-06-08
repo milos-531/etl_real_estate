@@ -40,7 +40,7 @@ css_selectors = {
     "for_students": "#plh29",
     "basement": "#plh41",
     "garden": "#plh51",
-    "date_posted": "#plh82",
+    "date_posted": "#plh81",
 }
 
 

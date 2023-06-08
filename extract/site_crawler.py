@@ -2,13 +2,14 @@ from time import sleep
 import pandas as pd
 import scrapy
 from scrapy.linkextractors import LinkExtractor
-from scrapy.crawler import CrawlerProcess
-import page_crawler
+from sqlalchemy import create_engine, text
+import extract.page_crawler as page_crawler
 from scrapy_selenium import SeleniumRequest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from shutil import which
 from datetime import datetime
+from db_tools.db_tools import DBTools
 
 
 class HaloSpyder(scrapy.Spider):
@@ -16,10 +17,10 @@ class HaloSpyder(scrapy.Spider):
     allowed_domains = ["halooglasi.com"]
     start_urls = ["https://www.halooglasi.com/nekretnine/izdavanje-stanova"]
 
-    def __init__(self, name=None, search_date = None, **kwargs):
+    def __init__(self, name=None, search_date=None, **kwargs):
         super().__init__(name, **kwargs)
         if search_date == None:
-            self.search_date = datetime.today().date()
+            self.search_date = HaloSpyder.__get_latest_date()
         else:
             self.search_date = search_date
 
@@ -27,28 +28,30 @@ class HaloSpyder(scrapy.Spider):
         # "AUTOTHROTTLE_ENABLED": True,
         # "AUTOTHROTTLE_DEBUG": True,
         "DOWNLOAD_DELAY": 0.25,
-        "CONCURRENT_REQUESTS" : 2,
+        "CONCURRENT_REQUESTS": 2,
         "FEEDS": {
-            'raw_output.csv': {"format": "csv", "encoding": "utf8", "overwrite": True}
+            "/tmp/etl/raw_output.csv": {"format": "csv", "encoding": "utf8", "overwrite": True}
         },
         "SELENIUM_DRIVER_NAME": "firefox",
         "SELENIUM_DRIVER_EXECUTABLE_PATH": "geckodriver",
         "SELENIUM_DRIVER_ARGUMENTS": ["-headless"],
         "DOWNLOADER_MIDDLEWARES": {
             "scrapy_selenium.SeleniumMiddleware": 800,
-        },
+        }
+        
     }
     active_page = 1
-    
+
     stop_scraping = False
+
     def parse(self, response):
         listing_links = HaloSpyder.__get_listing_pages(response)
-        if not listing_links or self.stop_scraping or self.active_page > 75:
+        if not listing_links or self.stop_scraping or self.active_page > 15:
             print(f"Crawler finished on page: {self.active_page}")
             return
         for listing in listing_links:
             listing_url = listing.url
-
+            print('Up to selenium request')
             yield SeleniumRequest(
                 url=listing_url, callback=self.__parse_page, wait_time=1
             )
@@ -79,7 +82,7 @@ class HaloSpyder(scrapy.Spider):
             print(e)
             sleep(20)
             parsed_page = page_crawler.parse_page(response)
-        date_posted = HaloSpyder.__get_date_posted(parsed_page['date_posted'])
+        date_posted = HaloSpyder.__get_date_posted(parsed_page["date_posted"])
         if date_posted is not None and date_posted < self.search_date:
             self.stop_scraping = True
         return parsed_page
@@ -88,11 +91,27 @@ class HaloSpyder(scrapy.Spider):
     def __get_date_posted(raw_date):
         try:
             unformatted_date = raw_date[:10]
-            formatted_date = datetime.strptime(unformatted_date, '%d.%m.%Y').date()
+            formatted_date = datetime.strptime(unformatted_date, "%d.%m.%Y").date()
             return formatted_date
         except Exception:
             return None
-if __name__ == "__main__":
-    crawler = CrawlerProcess()
-    crawler.crawl(HaloSpyder)
-    crawler.start()
+
+    @staticmethod
+    def __get_latest_date():
+        conn_string = DBTools.get_connection_string()
+        engine = create_engine(conn_string)
+        query = "SELECT MAX(date_posted) as latest_date from real_estate"
+        query = text(query)
+        try:
+            with engine.connect() as con:
+                response = con.execute(query)
+                for row in response:
+                    latest_date = row[0]
+            latest_date = datetime.strptime(latest_date, "%d.%m.%Y")
+            latest_date = latest_date.date()
+        except:
+            latest_date = datetime.today().date()
+        return latest_date
+
+
+

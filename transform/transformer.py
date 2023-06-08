@@ -4,7 +4,7 @@ from transform.validator import Validator
 
 class Transformer:
     @staticmethod
-    def run(input_file="raw_output.csv", output_file="processed_output.csv"):
+    def run(input_file, output_file="processed_output.csv"):
         df_raw = Transformer.__read_raw_file(input_file)
         if not Validator.is_valid(df_raw):
             raise ValueError
@@ -33,7 +33,8 @@ class Transformer:
         return df
 
     @staticmethod
-    def __read_raw_file(input_file='raw_output.csv'):
+    def __read_raw_file(input_file):
+        print(input_file)
         df_raw = pd.read_csv(input_file, decimal=',')
         return df_raw
 
@@ -43,9 +44,20 @@ class Transformer:
         df = Transformer.__parse_rent_cost(df)
         df = Transformer.__parse_floor(df)
         df = Transformer.__parse_utilities(df)
-        df["num_rooms"] = df["num_rooms"].astype(float)
+        df = Transformer.__parse_date_posted(df)
+        df = Transformer.__parse_num_rooms(df)
+        
         return df
 
+    @staticmethod
+    def __parse_date_posted(df):
+        df['date_posted'] = df['date_posted'].astype(str).str[:10]
+        return df
+    @staticmethod
+    def __parse_num_rooms(df):
+        df["num_rooms"] = df["num_rooms"].str.replace('+','')
+        df["num_rooms"] = df["num_rooms"].astype(float)
+        return df
     @staticmethod
     def __enrich(df):
         df['smoking_forbidden'] = (~df['allowed_smoking']) & df['no_smoking']
@@ -55,6 +67,7 @@ class Transformer:
     def __parse_utilities(df):
         df[["utilities_cost", "utilities_currency"]] = df["utilities_cost"].str.split(" ", expand=True)
         df["utilities_cost"] = df["utilities_cost"].astype(float)        
+        return df
 
     @staticmethod
     def __parse_area(df):

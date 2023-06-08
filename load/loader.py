@@ -1,6 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine, text, column, table
-
+from db_tools.db_tools import DBTools
+import sqlalchemy
 
 class Loader:
     @staticmethod
@@ -9,20 +10,11 @@ class Loader:
         return df_raw
 
     @staticmethod
-    def __get_connection_string():
-        username = "postgres"
-        password = "postgres"
-        port = "5432"
-        db_name = "real_estate"
-        conn_string = f"postgresql://{username}:{password}@localhost:{port}/{db_name}"
-        return conn_string
-
-    @staticmethod
     def run(
         input_file="processed_output.csv", table_name="real_estate", pk_column="url"
     ):
         df = Loader.__read_file(input_file)
-        conn_string = Loader.__get_connection_string()
+        conn_string = DBTools.get_connection_string()
         engine = create_engine(conn_string)
         df_new, df_duplicate = Loader.__get_new_and_duplicate_entries(
             df, engine, table_name, pk_column
@@ -44,12 +36,15 @@ class Loader:
 
     @staticmethod
     def __get_new_and_duplicate_entries(df, engine, table_name, pk_column):
+        if not sqlalchemy.inspect(engine).has_table(table_name): #If table doesn't exist
+            return df, None
         existing_urls = Loader.__get_existing(
             engine, tuple(df[pk_column]), table_name, pk_column
         )
         df_new = df[~df[pk_column].isin(existing_urls)]
         df_duplicate = df[df[pk_column].isin(existing_urls)]
         return df_new, df_duplicate
+    @staticmethod
 
     @staticmethod
     def __get_existing(engine, values_to_insert, table_name, column):
