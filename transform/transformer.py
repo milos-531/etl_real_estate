@@ -1,13 +1,11 @@
 import pandas as pd
-from transform.validator import Validator
 
 
 class Transformer:
     @staticmethod
     def run(input_file, output_file="processed_output.csv"):
         df_raw = Transformer.__read_raw_file(input_file)
-        if not Validator.is_valid(df_raw):
-            raise ValueError
+
         df_filled_na = Transformer.__drop_na(df_raw)
         df_cleaned = Transformer.__clean(df_filled_na)
         df_enriched = Transformer.__enrich(df_cleaned)
@@ -72,6 +70,7 @@ class Transformer:
     @staticmethod
     def __parse_area(df):
         df[["area", "area_unit"]] = df["area"].str.split(" ", expand=True)
+        df["area"] = df["area"].str.replace(',', '.', regex=True).astype(float)
         df["area"] = df["area"].astype(int)
         return df
 
@@ -85,5 +84,7 @@ class Transformer:
     def __parse_floor(df):
         df["floor"] = df["floor"].str.replace("VPR", "0.5")
         df["floor"] = df["floor"].str.replace("PR", "0")
+        df["floor"] = df["floor"].str.replace("PSUT", "-0.5")
+        df["floor"] = df["floor"].str.replace("SUT", "-0.5")
         df['floor'] = df['floor'].astype(float)
         return df

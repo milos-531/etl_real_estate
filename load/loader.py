@@ -1,4 +1,5 @@
 import pandas as pd
+from psycopg2 import ProgrammingError
 from sqlalchemy import create_engine, text, column, table
 from db_tools.db_tools import DBTools
 import sqlalchemy
@@ -27,8 +28,10 @@ class Loader:
     @staticmethod
     def __insert_new_entries(df_new, engine, table_name, pk_column):
         response = df_new.to_sql(table_name, engine, if_exists="append", method="multi")
-        Loader.__add_primary_key(engine, table_name, pk_column)
-
+        try:
+            Loader.__add_primary_key(engine, table_name, pk_column)
+        except Exception as e:
+            print(e)
         if response > 0:
             print(f"Inserted {response} rows to database")
         else:
@@ -38,13 +41,10 @@ class Loader:
     def __get_new_and_duplicate_entries(df, engine, table_name, pk_column):
         if not sqlalchemy.inspect(engine).has_table(table_name): #If table doesn't exist
             return df, None
-        existing_urls = Loader.__get_existing(
-            engine, tuple(df[pk_column]), table_name, pk_column
-        )
+        existing_urls = Loader.__get_existing(engine, tuple(df[pk_column]), table_name, pk_column)
         df_new = df[~df[pk_column].isin(existing_urls)]
         df_duplicate = df[df[pk_column].isin(existing_urls)]
         return df_new, df_duplicate
-    @staticmethod
 
     @staticmethod
     def __get_existing(engine, values_to_insert, table_name, column):

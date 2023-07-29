@@ -25,20 +25,21 @@ class HaloSpyder(scrapy.Spider):
             self.search_date = search_date
 
     custom_settings = {
-        # "AUTOTHROTTLE_ENABLED": True,
-        # "AUTOTHROTTLE_DEBUG": True,
         "DOWNLOAD_DELAY": 0.25,
         "CONCURRENT_REQUESTS": 2,
         "FEEDS": {
-            "/tmp/etl/raw_output.csv": {"format": "csv", "encoding": "utf8", "overwrite": True}
+            "/tmp/etl/raw_output.csv": {
+                "format": "csv",
+                "encoding": "utf8",
+                "overwrite": True,
+            }
         },
         "SELENIUM_DRIVER_NAME": "firefox",
         "SELENIUM_DRIVER_EXECUTABLE_PATH": "geckodriver",
         "SELENIUM_DRIVER_ARGUMENTS": ["-headless"],
         "DOWNLOADER_MIDDLEWARES": {
             "scrapy_selenium.SeleniumMiddleware": 800,
-        }
-        
+        },
     }
     active_page = 1
 
@@ -51,7 +52,7 @@ class HaloSpyder(scrapy.Spider):
             return
         for listing in listing_links:
             listing_url = listing.url
-            print('Up to selenium request')
+            print("Up to selenium request")
             yield SeleniumRequest(
                 url=listing_url, callback=self.__parse_page, wait_time=1
             )
@@ -112,6 +113,3 @@ class HaloSpyder(scrapy.Spider):
         except:
             latest_date = datetime.today().date()
         return latest_date
-
-
-
