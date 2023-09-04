@@ -1,0 +1,5 @@
+geckodriver.log
+raw_output.csv
+test.i
+extract/__pycache__/*
+
